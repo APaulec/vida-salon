@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VIDA">
+<meta name="theme-color" content="#1F4A3D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>VIDA Salon — Kundenkartei & Termine</title>
+<style>
+/* ================= VIDA Salon — Design ================= */
+:root{
+  --cream:#F7F2E9; --cream2:#EFE6D4; --paper:#FFFDF7;
+  --ink:#2A2B2E; --ink2:#77715F;
+  --gold:#C7A86A; --gold-lo:#A2823C; --gold-hi:#E7D098;
+  --emerald:#1F4A3D; --emerald-dk:#123128; --emerald-hi:#2E6B58;
+  --line:#DFD3B8; --red:#A8402F; --red-bg:#F6E4DE;
+  --serif:"Bodoni 72","Didot","Bodoni MT","Playfair Display",Georgia,"Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --sab:env(safe-area-inset-bottom,0px); --sat:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:var(--sans);color:var(--ink);background:var(--cream);
+  background-image:radial-gradient(ellipse at 20% -10%,rgba(199,168,106,.10),transparent 55%),
+                   radial-gradient(ellipse at 110% 110%,rgba(31,74,61,.07),transparent 50%);
+  background-attachment:fixed;
+  overscroll-behavior:none;-webkit-font-smoothing:antialiased;
+  -webkit-user-select:none;user-select:none;
+}
+input,textarea,select{ -webkit-user-select:text;user-select:text; }
+button{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer}
+h1,h2,h3,.serif{font-family:var(--serif);font-weight:600;letter-spacing:.01em}
+.small-caps{font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink2)}
+.goldrule{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);border:none;margin:10px 0}
+
+/* ---------- Sperrbildschirm ---------- */
+#lock{
+  position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:6px;padding:calc(var(--sat) + 20px) 24px calc(var(--sab) + 20px);
+  background:radial-gradient(ellipse at 50% -20%,var(--emerald-hi),var(--emerald) 45%,var(--emerald-dk) 100%);
+  color:var(--cream);text-align:center;
+}
+#lock .monogram{
+  width:96px;height:96px;border:1.5px solid var(--gold);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;margin-bottom:10px;
+  box-shadow:0 0 0 6px rgba(199,168,106,.12), 0 18px 44px rgba(0,0,0,.35);
+}
+#lock .monogram span{font-family:var(--serif);font-size:52px;color:var(--gold);line-height:1;transform:translateY(-2px)}
+#lock h1{font-size:30px;color:var(--gold-hi);font-weight:500;letter-spacing:.04em}
+#lock .sub{font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:rgba(247,242,233,.55);margin-bottom:14px}
+#lockMsg{min-height:22px;font-size:15px;color:rgba(247,242,233,.85)}
+#lockErr{color:#F0B9A9}
+.pindots{display:flex;gap:14px;justify-content:center;margin:14px 0 20px;min-height:14px}
+.pindots i{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--gold);opacity:.9}
+.pindots i.full{background:var(--gold)}
+.pinpad{display:grid;grid-template-columns:repeat(3,76px);gap:14px;justify-content:center}
+.pinpad button{
+  width:76px;height:76px;border-radius:50%;font-size:28px;font-family:var(--serif);
+  color:var(--cream);border:1px solid rgba(199,168,106,.45);background:rgba(255,255,255,.04);
+  transition:background .15s;
+}
+.pinpad button:active{background:rgba(199,168,106,.30)}
+.pinpad button.fn{font-family:var(--sans);font-size:15px;letter-spacing:.05em;border-color:transparent;color:var(--gold-hi)}
+#lock .foot{position:absolute;bottom:calc(var(--sab) + 14px);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(247,242,233,.35)}
+
+/* ---------- App-Gerüst ---------- */
+#app{display:none;height:100%;flex-direction:column}
+#app.on{display:flex}
+header.bar{
+  padding:calc(var(--sat) + 10px) 16px 10px;display:flex;align-items:baseline;gap:10px;
+  border-bottom:1px solid var(--line);background:rgba(247,242,233,.92);backdrop-filter:blur(10px);
+  position:sticky;top:0;z-index:20;
+}
+header.bar h1{font-size:22px;color:var(--emerald);letter-spacing:.03em}
+header.bar .v{color:var(--gold-lo)}
+header.bar .spacer{flex:1}
+#btnLock{font-size:18px;color:var(--emerald);padding:4px 6px}
+main{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:12px}
+.view{display:none;padding:14px 14px 24px;max-width:1060px;margin:0 auto;width:100%}
+.view.on{display:block}
+
+/* ---------- Tab-Leiste ---------- */
+nav.tabs{
+  display:flex;border-top:1px solid var(--gold);background:var(--paper);
+  padding-bottom:var(--sab);box-shadow:0 -8px 24px rgba(42,43,46,.06);
+}
+nav.tabs button{
+  flex:1;padding:10px 0 8px;display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);
+}
+nav.tabs button .ic{font-size:21px;line-height:1}
+nav.tabs button.on{color:var(--emerald)}
+nav.tabs button.on .ic{color:var(--gold-lo)}
+
+/* ---------- Karten & Buttons ---------- */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 10px rgba(42,43,46,.04)}
+.card h3{font-size:19px;color:var(--emerald);margin-bottom:8px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 18px;border-radius:999px;font-size:15px;font-weight:600;
+  background:var(--emerald);color:var(--cream);border:1px solid var(--emerald-dk);
+}
+.btn:active{transform:scale(.97)}
+.btn.gold{background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:var(--emerald-dk);border-color:var(--gold-lo)}
+.btn.ghost{background:transparent;color:var(--emerald);border:1px solid var(--gold)}
+.btn.danger{background:transparent;color:var(--red);border:1px solid var(--red)}
+.btn.wide{width:100%}
+.btn.sm{padding:7px 13px;font-size:13px}
+.iconbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--gold);color:var(--emerald);font-size:17px;display:inline-flex;align-items:center;justify-content:center;background:var(--paper)}
+
+/* ---------- Formulare ---------- */
+label.f{display:block;margin-bottom:12px}
+label.f>span{display:block;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);margin-bottom:5px}
+input,textarea,select{
+  width:100%;font-size:16px;font-family:var(--sans);color:var(--ink);
+  background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px;
+  appearance:none;-webkit-appearance:none;
+}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(199,168,106,.18)}
+textarea{min-height:74px;resize:vertical}
+.frow{display:flex;gap:10px}
+.frow>label.f{flex:1}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--emerald)}
+.checkline{display:flex;align-items:center;gap:10px;font-size:15px;margin-bottom:12px}
+
+/* ---------- Kalender ---------- */
+.calhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.calhead h2{font-size:21px;color:var(--emerald);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.calgrid{display:flex;background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(42,43,46,.04)}
+.timecol{width:46px;flex:none;border-right:1px solid var(--line);position:relative;background:var(--cream2)}
+.timecol div{position:absolute;right:6px;transform:translateY(-7px);font-size:10px;font-weight:600;color:var(--ink2);letter-spacing:.05em}
+.daywrap{flex:1;display:flex;min-width:0}
+.daycol{flex:1;position:relative;border-right:1px solid var(--line);min-width:0}
+.daycol:last-child{border-right:none}
+.daycol.today{background:rgba(199,168,106,.07)}
+.dayhead{
+  position:sticky;top:0;z-index:5;text-align:center;padding:7px 2px;font-size:12px;font-weight:600;
+  letter-spacing:.06em;color:var(--emerald);background:var(--paper);border-bottom:1px solid var(--gold);
+}
+.dayhead .dnum{font-family:var(--serif);font-size:16px;display:block}
+.hourline{position:absolute;left:0;right:0;border-top:1px solid var(--line);pointer-events:none}
+.hourline.half{border-top-style:dashed;opacity:.45}
+.nowline{position:absolute;left:0;right:0;border-top:2px solid var(--red);z-index:4;pointer-events:none}
+.nowline::before{content:'';position:absolute;left:-1px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--red)}
+.appt{
+  position:absolute;border-radius:8px;padding:3px 7px;overflow:hidden;z-index:3;
+  font-size:12px;line-height:1.28;color:var(--ink);cursor:pointer;
+  background:var(--cream2);border:1px solid var(--line);border-left:4px solid var(--gold);
+  box-shadow:0 1px 4px rgba(42,43,46,.10);
+}
+.appt b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appt .t{font-weight:600;font-size:10.5px;color:var(--ink2);letter-spacing:.03em}
+.appt .sv{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;color:var(--ink2)}
+.appt.st-erledigt{opacity:.55}
+.appt.st-erledigt b::after{content:' ✓';color:var(--emerald)}
+.appt.st-abgesagt,.appt.st-nichterschienen{opacity:.45;border-left-color:var(--ink2)}
+.appt.st-abgesagt b{text-decoration:line-through}
+.calfoot{margin-top:10px;display:flex;gap:8px;justify-content:center}
+
+/* ---------- Kundenliste ---------- */
+.search{position:relative;margin-bottom:12px}
+.search input{padding-left:38px;border-radius:999px}
+.search::before{content:'⌕';position:absolute;left:14px;top:50%;transform:translateY(-54%);font-size:20px;color:var(--ink2)}
+.klist{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.kgroup{padding:4px 14px;background:var(--cream2);font-family:var(--serif);font-size:15px;color:var(--gold-lo);border-bottom:1px solid var(--line)}
+.krow{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.krow:last-child{border-bottom:none}
+.krow:active{background:var(--cream2)}
+.krow .ini{
+  width:40px;height:40px;flex:none;border-radius:50%;background:var(--emerald);color:var(--gold-hi);
+  font-family:var(--serif);font-size:17px;display:flex;align-items:center;justify-content:center;
+}
+.krow .nm{flex:1;min-width:0}
+.krow .nm b{display:block;font-size:16px;font-weight:600}
+.krow .nm span{font-size:13px;color:var(--ink2)}
+.krow .warn{color:var(--red);font-size:16px}
+.krow .chev{color:var(--gold);font-size:18px}
+.empty{padding:34px 20px;text-align:center;color:var(--ink2);font-size:15px}
+.empty .big{font-family:var(--serif);font-size:40px;color:var(--gold);display:block;margin-bottom:8px}
+
+/* ---------- Kundendetail ---------- */
+.kdhead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.kdhead h2{font-size:26px;color:var(--emerald);flex:1;min-width:0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.warnbanner{
+  background:var(--red-bg);border:1px solid var(--red);border-left-width:5px;border-radius:10px;
+  padding:10px 13px;margin-bottom:12px;font-size:15px;color:var(--red);
+}
+.warnbanner b{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:3px}
+.histrow{display:flex;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:14px;align-items:baseline}
+.histrow:last-child{border-bottom:none}
+.histrow .d{flex:none;width:86px;font-weight:600;color:var(--emerald)}
+.histrow .s{flex:1;min-width:0}
+.histrow .p{flex:none;font-weight:600;color:var(--gold-lo)}
+.recipe{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--cream);position:relative}
+.recipe .rd{font-family:var(--serif);color:var(--gold-lo);font-size:15px;margin-bottom:4px}
+.recipe dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:14px}
+.recipe dt{color:var(--ink2);font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding-top:2px}
+.recipe dd{white-space:pre-wrap;word-break:break-word}
+.recipe .edit{position:absolute;top:8px;right:8px;font-size:15px;color:var(--emerald);padding:4px 8px}
+
+/* ---------- Einstellungen / Mehr ---------- */
+.svcrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.svcrow:last-child{border-bottom:none}
+.svcrow .dot{width:14px;height:14px;border-radius:50%;flex:none}
+.svcrow .n{flex:1;min-width:0;font-size:15px}
+.svcrow .meta{font-size:13px;color:var(--ink2);white-space:nowrap}
+.swatches{display:flex;gap:9px;flex-wrap:wrap;margin-top:4px}
+.swatches button{width:34px;height:34px;border-radius:50%;border:2px solid transparent}
+.swatches button.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--paper) inset}
+.note{font-size:13px;color:var(--ink2);line-height:1.5;margin-top:8px}
+.privacy li{margin:6px 0 6px 18px;font-size:14px;line-height:1.45}
+
+/* ---------- Sheet / Modal ---------- */
+.ovl{position:fixed;inset:0;z-index:60;background:rgba(20,40,33,.45);display:flex;align-items:flex-end;justify-content:center;animation:fade .18s}
+@media(min-width:700px){.ovl{align-items:center}}
+.sheet{
+  background:var(--cream);width:100%;max-width:560px;max-height:88vh;overflow:auto;
+  border-radius:20px 20px 0 0;padding:16px 18px calc(var(--sab) + 20px);
+  animation:up .22s cubic-bezier(.2,.8,.3,1);-webkit-overflow-scrolling:touch;
+}
+@media(min-width:700px){.sheet{border-radius:20px;padding-bottom:20px}}
+.sheet .shead{display:flex;align-items:center;margin-bottom:12px}
+.sheet .shead h3{flex:1;font-size:21px;color:var(--emerald)}
+.sheet .shead .x{font-size:22px;color:var(--ink2);padding:4px 10px}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* Kunden-Vorschläge im Terminformular */
+.sugg{border:1px solid var(--gold);border-radius:10px;background:var(--paper);margin-top:-8px;margin-bottom:12px;overflow:hidden}
+.sugg button{display:block;width:100%;text-align:left;padding:10px 13px;font-size:15px;border-bottom:1px solid var(--line)}
+.sugg button:last-child{border-bottom:none}
+.sugg button:active{background:var(--cream2)}
+.sugg .ph{font-size:12.5px;color:var(--ink2);margin-left:8px}
+
+/* ---------- Toast ---------- */
+#toast{
+  position:fixed;left:50%;bottom:calc(var(--sab) + 84px);transform:translateX(-50%);z-index:90;
+  background:var(--emerald-dk);color:var(--cream);padding:11px 20px;border-radius:999px;
+  font-size:14px;border:1px solid var(--gold);box-shadow:0 10px 30px rgba(0,0,0,.25);
+  opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;
+}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ============ Sperrbildschirm ============ -->
+<div id="lock">
+  <div class="monogram"><span>V</span></div>
+  <h1>VIDA</h1>
+  <div class="sub">Hair Lounge</div>
+  <div id="lockMsg"></div>
+  <div class="pindots" id="pinDots"></div>
+  <div class="pinpad" id="pinPad"></div>
+  <div class="foot">Kundendaten · verschlüsselt · nur auf diesem Gerät</div>
+</div>
+
+<!-- ============ App ============ -->
+<div id="app">
+  <header class="bar">
+    <h1><span class="v">V</span>IDA <span style="font-size:14px;color:var(--ink2);font-family:var(--sans);letter-spacing:.2em">SALON</span></h1>
+    <div class="spacer"></div>
+    <button id="btnLock" title="Sperren" aria-label="Sperren">🔒</button>
+  </header>
+
+  <main>
+    <section class="view" id="viewCal"></section>
+    <section class="view" id="viewKunden"></section>
+    <section class="view" id="viewMehr"></section>
+  </main>
+
+  <nav class="tabs">
+    <button data-tab="Cal"><span class="ic">🗓</span>Termine</button>
+    <button data-tab="Kunden"><span class="ic">✂︎</span>Kunden</button>
+    <button data-tab="Mehr"><span class="ic">⚙︎</span>Mehr</button>
+  </nav>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   VIDA Salon — Kundenkartei & Terminkalender
+   Alle Daten bleiben lokal (IndexedDB), AES-GCM-verschlüsselt, PIN-Sperre.
+   Keinerlei externe Verbindungen.
+   ===================================================================== */
+
+/* ---------- IndexedDB (kleiner Promise-Wrapper) ---------- */
+const idb = {
+  db: null,
+  open() {
+    return new Promise((res, rej) => {
+      const rq = indexedDB.open('vida-salon', 1);
+      rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+      rq.onsuccess = () => { idb.db = rq.result; res(); };
+      rq.onerror = () => rej(rq.error);
+    });
+  },
+  get(k) {
+    return new Promise((res, rej) => {
+      const rq = idb.db.transaction('kv').objectStore('kv').get(k);
+      rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+    });
+  },
+  set(k, v) {
+    return new Promise((res, rej) => {
+      const tx = idb.db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').put(v, k);
+      tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
+    });
+  }
+};
+
+/* ---------- Krypto (PBKDF2 → AES-GCM) ---------- */
+const ITER = 310000;
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function deriveKey(pin, salt, iter) {
+  const raw = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: iter, hash: 'SHA-256' },
+    raw, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function encJSON(obj, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key,
+    new TextEncoder().encode(JSON.stringify(obj)));
+  return { iv: b64(iv), ct: b64(ct) };
+}
+async function decJSON(pack, key) {
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(pack.iv) }, key, unb64(pack.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ---------- Zustand ---------- */
+let KEY = null;      // entschlüsselter AES-Schlüssel (nur im Speicher)
+let META = null;     // {salt, iter, check}
+let S = null;        // {customers, appointments, services, settings}
+let saveTimer = null;
+
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() :
+  'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2));
+
+function defaultServices() {
+  const mk = (name, dur, price, color) =>
+    ({ id: uid(), name, dur, price, color, createdAt: Date.now(), updatedAt: Date.now() });
+  return [
+    mk('Damen · Schneiden & Föhnen', 60, 48, '#C7A86A'),
+    mk('Herren · Schneiden', 30, 28, '#5B7A99'),
+    mk('Färben · Ansatz', 90, 65, '#1F4A3D'),
+    mk('Strähnen / Balayage', 150, 120, '#8A6FA8'),
+    mk('Tönung', 60, 45, '#4E7A5A'),
+    mk('Dauerwelle', 120, 85, '#A8402F'),
+    mk('Föhnen & Styling', 30, 25, '#B8860B'),
+    mk('Kinderhaarschnitt', 30, 18, '#946B4A')
+  ];
+}
+function defaultData() {
+  return {
+    customers: [], appointments: [], services: defaultServices(),
+    settings: { salonName: 'VIDA Hair Lounge', openFrom: '08:00', openTo: '19:00',
+                slot: 15, autoLockMin: 5, showSunday: false }
+  };
+}
+
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    if (!KEY || !S) return;
+    try { await idb.set('data', await encJSON(S, KEY)); }
+    catch (e) { toast('Speichern fehlgeschlagen!'); }
+  }, 300);
+}
+
+/* ---------- Hilfen ---------- */
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const WD = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+const MON = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const dkey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const fromKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const hm2min = hm => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+const min2hm = mi => String(Math.floor(mi / 60)).padStart(2, '0') + ':' + String(mi % 60).padStart(2, '0');
+const fmtDate = k => { const d = fromKey(k); return WD[d.getDay()] + '., ' + d.getDate() + '. ' + MON[d.getMonth()] + ' ' + d.getFullYear(); };
+const fmtDateShort = k => { const d = fromKey(k); return d.getDate() + '.' + (d.getMonth() + 1) + '.' + String(d.getFullYear()).slice(2); };
+const fmtEuro = n => (n == null || n === '') ? '' : Number(n).toFixed(2).replace('.', ',') + ' €';
+const custById = id => S.customers.find(c => c.id === id);
+const svcById = id => S.services.find(s => s.id === id);
+const apptCustName = a => a.customerId ? (custById(a.customerId)?.name || '(gelöschte Kundin)') : (a.customerName || 'Ohne Name');
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 2400);
+}
+
+/* ---------- Sheet / Bestätigung ---------- */
+function openSheet(title, bodyHTML) {
+  const ovl = document.createElement('div');
+  ovl.className = 'ovl';
+  ovl.innerHTML = `<div class="sheet"><div class="shead"><h3>${esc(title)}</h3>
+    <button class="x" aria-label="Schließen">✕</button></div><div class="sbody">${bodyHTML}</div></div>`;
+  document.body.appendChild(ovl);
+  const close = () => ovl.remove();
+  ovl.addEventListener('click', e => { if (e.target === ovl) close(); });
+  ovl.querySelector('.x').addEventListener('click', close);
+  return { el: ovl, close };
+}
+function confirmDlg(msg, okLabel = 'Ja, fortfahren', danger = false) {
+  return new Promise(res => {
+    const sh = openSheet('Bist du sicher?', `
+      <p style="font-size:15px;line-height:1.5;margin-bottom:16px">${esc(msg)}</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn ghost" style="flex:1" data-a="no">Abbrechen</button>
+        <button class="btn ${danger ? 'danger' : ''}" style="flex:1" data-a="yes">${esc(okLabel)}</button>
+      </div>`);
+    sh.el.querySelector('[data-a=no]').onclick = () => { sh.close(); res(false); };
+    sh.el.querySelector('[data-a=yes]').onclick = () => { sh.close(); res(true); };
+  });
+}
+
+/* =====================================================================
+   Sperrbildschirm & PIN
+   ===================================================================== */
+const lockUI = { mode: 'unlock', buf: '', firstPin: '' };
+
+function renderPad() {
+  const pad = $('#pinPad');
+  pad.innerHTML = '';
+  ['1','2','3','4','5','6','7','8','9','⌫','0','OK'].forEach(k => {
+    const b = document.createElement('button');
+    b.textContent = k;
+    if (k === '⌫' || k === 'OK') b.className = 'fn';
+    b.onclick = () => padKey(k);
+    pad.appendChild(b);
+  });
+}
+function renderDots() {
+  $('#pinDots').innerHTML = Array.from({ length: Math.max(4, lockUI.buf.length) },
+    (_, i) => `<i class="${i < lockUI.buf.length ? 'full' : ''}"></i>`).join('');
+}
+function lockMsg(msg, err = false) {
+  const m = $('#lockMsg'); m.textContent = msg; m.id = 'lockMsg';
+  m.style.color = err ? '#F0B9A9' : '';
+}
+async function padKey(k) {
+  if (k === '⌫') { lockUI.buf = lockUI.buf.slice(0, -1); renderDots(); return; }
+  if (k === 'OK') { await pinSubmit(); return; }
+  if (lockUI.buf.length < 10) { lockUI.buf += k; renderDots(); }
+}
+async function pinSubmit() {
+  const pin = lockUI.buf;
+  if (pin.length < 4) { lockMsg('Mindestens 4 Ziffern.', true); return; }
+  if (lockUI.mode === 'setup1') {
+    lockUI.firstPin = pin; lockUI.buf = ''; lockUI.mode = 'setup2';
+    renderDots(); lockMsg('PIN wiederholen'); return;
+  }
+  if (lockUI.mode === 'setup2') {
+    if (pin !== lockUI.firstPin) {
+      lockUI.mode = 'setup1'; lockUI.buf = ''; lockUI.firstPin = '';
+      renderDots(); lockMsg('Stimmt nicht überein — bitte neu wählen.', true); return;
+    }
+    lockMsg('Richte ein …');
+    await createVault(pin);
+    return;
+  }
+  // unlock
+  lockMsg('Entsperre …');
+  try {
+    const key = await deriveKey(pin, unb64(META.salt), META.iter);
+    await decJSON(META.check, key);          // PIN-Prüfung
+    KEY = key;
+    S = await decJSON(await idb.get('data'), key);
+    unlockedUI();
+  } catch (e) {
+    lockUI.buf = ''; renderDots();
+    lockMsg('Falsche PIN.', true);
+  }
+}
+async function createVault(pin) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await deriveKey(pin, salt, ITER);
+  META = { salt: b64(salt), iter: ITER, check: await encJSON({ v: 'vida-check' }, key) };
+  await idb.set('meta', META);
+  KEY = key; S = defaultData();
+  await idb.set('data', await encJSON(S, KEY));
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  unlockedUI();
+  toast('Einrichtung abgeschlossen — willkommen!');
+}
+function unlockedUI() {
+  lockUI.buf = ''; renderDots();
+  $('#lock').style.display = 'none';
+  $('#app').classList.add('on');
+  lastActive = Date.now();
+  switchTab(curTab || 'Cal');
+}
+function lockNow() {
+  KEY = null; S = null;
+  clearTimeout(saveTimer);
+  ['#viewCal', '#viewKunden', '#viewMehr'].forEach(v => { $(v).innerHTML = ''; });
+  document.querySelectorAll('.ovl').forEach(o => o.remove());
+  $('#app').classList.remove('on');
+  $('#lock').style.display = 'flex';
+  lockUI.mode = 'unlock'; lockUI.buf = '';
+  renderDots(); lockMsg('PIN eingeben');
+}
+
+/* ---------- Auto-Sperre ---------- */
+let lastActive = Date.now();
+['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+  document.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true }));
+function autoLockCheck() {
+  if (!KEY || !S) return;
+  const min = S.settings.autoLockMin;
+  if (min > 0 && Date.now() - lastActive > min * 60000) lockNow();
+}
+setInterval(autoLockCheck, 20000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) autoLockCheck(); });
+
+/* =====================================================================
+   Navigation
+   ===================================================================== */
+let curTab = 'Cal';
+function switchTab(name) {
+  curTab = name;
+  document.querySelectorAll('nav.tabs button').forEach(b =>
+    b.classList.toggle('on', b.dataset.tab === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+  $('#view' + name).classList.add('on');
+  if (name === 'Cal') renderCal();
+  if (name === 'Kunden') renderKunden();
+  if (name === 'Mehr') renderMehr();
+}
+document.querySelectorAll('nav.tabs button').forEach(b =>
+  b.addEventListener('click', () => switchTab(b.dataset.tab)));
+$('#btnLock').addEventListener('click', lockNow);
+
+/* =====================================================================
+   Kalender
+   ===================================================================== */
+const HOUR_PX = 64;
+const cal = { date: new Date(), forceMode: null };
+const isWide = () => window.innerWidth >= 700;
+const calMode = () => cal.forceMode || (isWide() ? 'week' : 'day');
+
+function mondayOf(d) {
+  const x = new Date(d); const wd = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - wd); return x;
+}
+function calDays() {
+  if (calMode() === 'day') return [dkey(cal.date)];
+  const mo = mondayOf(cal.date);
+  const n = S.settings.showSunday ? 7 : 6;
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(mo); d.setDate(mo.getDate() + i); return dkey(d);
+  });
+}
+
+function renderCal() {
+  const v = $('#viewCal');
+  const days = calDays();
+  const from = hm2min(S.settings.openFrom), to = hm2min(S.settings.openTo);
+  const H = (to - from) / 60 * HOUR_PX;
+  const todayKey = dkey(new Date());
+
+  let title;
+  if (calMode() === 'day') title = fmtDate(days[0]);
+  else {
+    const a = fromKey(days[0]), b = fromKey(days[days.length - 1]);
+    title = a.getDate() + '.' + (a.getMonth() + 1) + '. – ' + b.getDate() + '.' + (b.getMonth() + 1) + '. ' + b.getFullYear();
+  }
+
+  // Tagesspalten
+  const colsHTML = days.map(k => {
+    let lines = '';
+    for (let m = from + 30; m < to; m += 30)
+      lines += `<div class="hourline ${m % 60 ? 'half' : ''}" style="top:${(m - from) / 60 * HOUR_PX}px"></div>`;
+
+    let now = '';
+    if (k === todayKey) {
+      const nm = new Date().getHours() * 60 + new Date().getMinutes();
+      if (nm > from && nm < to) now = `<div class="nowline" style="top:${(nm - from) / 60 * HOUR_PX}px"></div>`;
+    }
+
+    const appts = S.appointments.filter(a => a.date === k).sort((x, y) => hm2min(x.start) - hm2min(y.start));
+    const laid = layoutAppts(appts);
+    const blocks = laid.map(({ a, col, ncols }) => {
+      const st = hm2min(a.start), top = (st - from) / 60 * HOUR_PX;
+      const h = Math.max(22, a.dur / 60 * HOUR_PX - 2);
+      const w = 100 / ncols, l = col * w;
+      const sv = a.serviceId ? svcById(a.serviceId) : null;
+      const color = sv ? sv.color : 'var(--gold)';
+      const stCls = 'st-' + (a.status || 'geplant').replace(/\s/g, '');
+      return `<div class="appt ${stCls}" data-id="${a.id}"
+        style="top:${top}px;height:${h}px;left:calc(${l}% + 2px);width:calc(${w}% - 5px);border-left-color:${esc(color)}">
+        <span class="t">${esc(a.start)}–${min2hm(hm2min(a.start) + a.dur)}</span>
+        <b>${esc(apptCustName(a))}</b>
+        <span class="sv">${esc(sv ? sv.name : (a.serviceName || ''))}</span></div>`;
+    }).join('');
+
+    const dd = fromKey(k);
+    const head = calMode() === 'week'
+      ? `<div class="dayhead">${WD[dd.getDay()]}<span class="dnum">${dd.getDate()}</span></div>` : '';
+    return `<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+      ${head}
+      <div class="daycol ${k === todayKey ? 'today' : ''}" data-date="${k}" style="height:${H}px">
+        ${lines}${now}${blocks}</div></div>`;
+  }).join('');
+
+  v.innerHTML = `
+    <div class="calhead">
+      <button class="iconbtn" id="calPrev" aria-label="Zurück">‹</button>
+      <h2 class="serif">${esc(title)}</h2>
+      <button class="btn ghost sm" id="calToday">Heute</button>
+      <button class="iconbtn" id="calNext" aria-label="Weiter">›</button>
+    </div>
+    <div class="calgrid">
+      <div class="timecol" style="height:${H + (calMode() === 'week' ? 41 : 0)}px;padding-top:${calMode() === 'week' ? 41 : 0}px">
+        <div style="position:relative;height:${H}px"></div>
+      </div>
+      <div class="daywrap">${colsHTML}</div>
+    </div>
+    <div class="calfoot">
+      <button class="btn gold" id="calNew">＋ Neuer Termin</button>
+      ${isWide() ? `<button class="btn ghost" id="calMode">${calMode() === 'week' ? 'Tagesansicht' : 'Wochenansicht'}</button>` : ''}
+    </div>`;
+
+  // Zeitbeschriftung korrekt einsetzen (relative Unterspalte)
+  const tc = v.querySelector('.timecol > div');
+  tc.innerHTML = '';
+  for (let m = from; m <= to; m += 60) {
+    const d = document.createElement('div');
+    d.style.top = (m - from) / 60 * HOUR_PX + 'px';
+    d.style.position = 'absolute'; d.style.right = '6px';
+    if (m === from) d.style.transform = 'translateY(0)';          // oben nicht abschneiden
+    if (m === to) d.style.transform = 'translateY(-14px)';        // unten nicht abschneiden
+    d.textContent = min2hm(m);
+    tc.appendChild(d);
+  }
+
+  const step = calMode() === 'week' ? 7 : 1;
+  $('#calPrev').onclick = () => { cal.date.setDate(cal.date.getDate() - step); renderCal(); };
+  $('#calNext').onclick = () => { cal.date.setDate(cal.date.getDate() + step); renderCal(); };
+  $('#calToday').onclick = () => { cal.date = new Date(); renderCal(); };
+  $('#calNew').onclick = () => openApptForm(null, { date: dkey(cal.date) });
+  const mBtn = $('#calMode');
+  if (mBtn) mBtn.onclick = () => { cal.forceMode = calMode() === 'week' ? 'day' : 'week'; renderCal(); };
+
+  v.querySelectorAll('.daycol').forEach(col => {
+    col.addEventListener('click', e => {
+      const ap = e.target.closest('.appt');
+      if (ap) { openApptForm(S.appointments.find(a => a.id === ap.dataset.id)); return; }
+      const rect = col.getBoundingClientRect();
+      const mins = from + (e.clientY - rect.top) / HOUR_PX * 60;
+      const snap = Math.max(from, Math.min(to - 30,
+        Math.floor(mins / S.settings.slot) * S.settings.slot));
+      openApptForm(null, { date: col.dataset.date, start: min2hm(snap) });
+    });
+  });
+}
+
+function layoutAppts(appts) {
+  // Überlappende Termine nebeneinander anordnen (Cluster-Spalten)
+  const res = []; let cluster = []; let colEnds = [];
+  const flush = () => {
+    const n = colEnds.length || 1;
+    cluster.forEach(it => { it.ncols = n; res.push(it); });
+    cluster = []; colEnds = [];
+  };
+  appts.forEach(a => {
+    const st = hm2min(a.start), en = st + a.dur;
+    if (colEnds.length && colEnds.every(e => e <= st)) flush();
+    let col = colEnds.findIndex(e => e <= st);
+    if (col === -1) { col = colEnds.length; colEnds.push(en); }
+    else colEnds[col] = en;
+    cluster.push({ a, col, ncols: 1 });
+  });
+  flush();
+  return res;
+}
+window.addEventListener('resize', () => { if (KEY && curTab === 'Cal') renderCal(); });
+
+/* ---------- Terminformular ---------- */
+function openApptForm(appt, defaults = {}) {
+  const isNew = !appt;
+  const a = appt || {
+    id: uid(), date: defaults.date || dkey(new Date()), start: defaults.start || '10:00',
+    dur: 60, serviceId: '', customerId: defaults.customerId || '', customerName: '',
+    price: '', status: 'geplant', note: '', createdAt: Date.now(), updatedAt: Date.now()
+  };
+  const custName = a.customerId ? (custById(a.customerId)?.name || '') : (a.customerName || '');
+  const svcOpts = S.services.map(s =>
+    `<option value="${s.id}" ${s.id === a.serviceId ? 'selected' : ''}>${esc(s.name)}</option>`).join('');
+
+  const sh = openSheet(isNew ? 'Neuer Termin' : 'Termin bearbeiten', `
+    <label class="f"><span>Kundin / Kunde</span>
+      <input id="apCust" placeholder="Name eingeben oder suchen …" autocomplete="off" value="${esc(custName)}">
+    </label>
+    <div id="apSugg"></div>
+    <div class="frow">
+      <label class="f"><span>Datum</span><input type="date" id="apDate" value="${esc(a.date)}"></label>
+      <label class="f"><span>Beginn</span><input type="time" id="apStart" step="300" value="${esc(a.start)}"></label>
+    </div>
+    <label class="f"><span>Dienstleistung</span>
+      <select id="apSvc"><option value="">— frei / ohne —</option>${svcOpts}</select></label>
+    <div class="frow">
+      <label class="f"><span>Dauer (Min.)</span><input type="number" id="apDur" min="5" step="5" value="${a.dur}"></label>
+      <label class="f"><span>Preis (€)</span><input type="number" id="apPrice" min="0" step="0.5" inputmode="decimal" value="${a.price ?? ''}"></label>
+    </div>
+    <label class="f"><span>Status</span>
+      <select id="apStatus">
+        <option value="geplant">Geplant</option>
+        <option value="erledigt">Erledigt ✓</option>
+        <option value="abgesagt">Abgesagt</option>
+        <option value="nichterschienen">Nicht erschienen</option>
+      </select></label>
+    <label class="f"><span>Notiz</span><textarea id="apNote">${esc(a.note)}</textarea></label>
+    <button class="btn wide gold" id="apSave">${isNew ? 'Termin anlegen' : 'Speichern'}</button>
+    ${isNew ? '' : `<button class="btn wide danger" id="apDel" style="margin-top:10px">Termin löschen</button>`}
+  `);
+  const el = sh.el;
+  el.querySelector('#apStatus').value = a.status || 'geplant';
+
+  // Kundensuche mit Vorschlägen
+  let selCustId = a.customerId || '';
+  const custInput = el.querySelector('#apCust');
+  const suggBox = el.querySelector('#apSugg');
+  custInput.addEventListener('input', () => {
+    selCustId = '';
+    const q = custInput.value.trim().toLowerCase();
+    if (!q) { suggBox.innerHTML = ''; return; }
+    const hits = S.customers.filter(c => c.name.toLowerCase().includes(q) ||
+      (c.phone || '').replace(/\s/g, '').includes(q.replace(/\s/g, ''))).slice(0, 5);
+    suggBox.innerHTML = hits.length ? `<div class="sugg">${hits.map(c =>
+      `<button data-id="${c.id}">${esc(c.name)}<span class="ph">${esc(c.phone || '')}</span></button>`).join('')}</div>` : '';
+    suggBox.querySelectorAll('button').forEach(b => b.onclick = () => {
+      selCustId = b.dataset.id;
+      custInput.value = custById(selCustId).name;
+      suggBox.innerHTML = '';
+    });
+  });
+
+  // Dienstleistung setzt Dauer/Preis vor
+  el.querySelector('#apSvc').addEventListener('change', ev => {
+    const sv = svcById(ev.target.value);
+    if (sv) { el.querySelector('#apDur').value = sv.dur; el.querySelector('#apPrice').value = sv.price; }
+  });
+
+  el.querySelector('#apSave').onclick = () => {
+    const name = custInput.value.trim();
+    if (!name && !selCustId) { toast('Bitte Kundenname angeben.'); return; }
+    a.customerId = selCustId;
+    a.customerName = selCustId ? '' : name;
+    a.date = el.querySelector('#apDate').value || a.date;
+    a.start = el.querySelector('#apStart').value || a.start;
+    a.dur = Math.max(5, parseInt(el.querySelector('#apDur').value, 10) || 30);
+    a.serviceId = el.querySelector('#apSvc').value;
+    a.serviceName = a.serviceId ? '' : (a.serviceName || '');
+    const pv = el.querySelector('#apPrice').value;
+    a.price = pv === '' ? '' : parseFloat(pv);
+    a.status = el.querySelector('#apStatus').value;
+    a.note = el.querySelector('#apNote').value.trim();
+    a.updatedAt = Date.now();
+    if (isNew) S.appointments.push(a);
+    save(); sh.close();
+    toast(isNew ? 'Termin angelegt.' : 'Termin gespeichert.');
+    if (curTab === 'Cal') renderCal(); else if (curTab === 'Kunden') renderKunden();
+  };
+
+  const del = el.querySelector('#apDel');
+  if (del) del.onclick = async () => {
+    if (!await confirmDlg('Diesen Termin endgültig löschen?', 'Löschen', true)) return;
+    S.appointments = S.appointments.filter(x => x.id !== a.id);
+    save(); sh.close(); toast('Termin gelöscht.');
+    if (curTab === 'Cal') renderCal(); else if (curTab === 'Kunden') renderKunden();
+  };
+}
+
+/* =====================================================================
+   Kundenkartei
+   ===================================================================== */
+const kund = { q: '', detailId: null };
+
+function renderKunden() {
+  if (kund.detailId) { renderKundenDetail(kund.detailId); return; }
+  const v = $('#viewKunden');
+  const q = kund.q.trim().toLowerCase();
+  const list = S.customers
+    .filter(c => !q || c.name.toLowerCase().includes(q) ||
+      (c.phone || '').replace(/\s/g, '').includes(q.replace(/\s/g, '')))
+    .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+
+  let rows = '', lastLetter = '';
+  list.forEach(c => {
+    const L = (c.name[0] || '#').toUpperCase();
+    if (L !== lastLetter && !q) { rows += `<div class="kgroup">${esc(L)}</div>`; lastLetter = L; }
+    const ini = c.name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    rows += `<div class="krow" data-id="${c.id}">
+      <div class="ini">${esc(ini)}</div>
+      <div class="nm"><b>${esc(c.name)}</b><span>${esc(c.phone || '')}</span></div>
+      ${c.hints ? '<span class="warn" title="Hinweise vorhanden">⚠︎</span>' : ''}
+      <span class="chev">›</span></div>`;
+  });
+
+  v.innerHTML = `
+    <div class="search"><input id="kSearch" placeholder="Kundin suchen …" value="${esc(kund.q)}" autocomplete="off"></div>
+    <div class="klist">${rows || `<div class="empty"><span class="big">✂︎</span>
+      ${q ? 'Keine Treffer.' : 'Noch keine Kundinnen.<br>Lege die erste Kundenkarte an!'}</div>`}</div>
+    <div style="margin-top:14px;text-align:center">
+      <button class="btn gold" id="kNew">＋ Neue Kundin</button></div>
+    <p class="note" style="text-align:center">${S.customers.length} Kundinnen · Daten nur auf diesem Gerät</p>`;
+
+  const inp = $('#kSearch');
+  inp.addEventListener('input', () => {
+    kund.q = inp.value;
+    renderKunden();
+    const i2 = $('#kSearch'); i2.focus();
+    i2.setSelectionRange(i2.value.length, i2.value.length);
+  });
+  $('#kNew').onclick = () => openCustForm(null);
+  v.querySelectorAll('.krow').forEach(r =>
+    r.addEventListener('click', () => { kund.detailId = r.dataset.id; renderKunden(); }));
+}
+
+function renderKundenDetail(id) {
+  const c = custById(id);
+  const v = $('#viewKunden');
+  if (!c) { kund.detailId = null; renderKunden(); return; }
+
+  const todayK = dkey(new Date());
+  const done = S.appointments.filter(a => a.customerId === id && a.status === 'erledigt')
+    .sort((x, y) => y.date.localeCompare(x.date) || y.start.localeCompare(x.start));
+  const next = S.appointments.filter(a => a.customerId === id && a.status === 'geplant' &&
+    (a.date > todayK || (a.date === todayK && a.start >= min2hm(new Date().getHours() * 60 + new Date().getMinutes()))))
+    .sort((x, y) => x.date.localeCompare(y.date) || x.start.localeCompare(y.start))[0];
+
+  const recipes = (c.recipes || []).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  const histHTML = done.length ? done.map(a => {
+    const sv = a.serviceId ? svcById(a.serviceId) : null;
+    return `<div class="histrow" data-apid="${a.id}"><span class="d">${fmtDateShort(a.date)}</span>
+      <span class="s">${esc(sv ? sv.name : (a.serviceName || 'Termin'))}${a.note ? ' · ' + esc(a.note) : ''}</span>
+      <span class="p">${fmtEuro(a.price)}</span></div>`;
+  }).join('') : '<p class="note">Noch keine erledigten Termine.</p>';
+
+  const recipesHTML = recipes.length ? recipes.map(r => `
+    <div class="recipe">
+      <div class="rd">${r.date ? fmtDate(r.date) : 'Ohne Datum'}</div>
+      <button class="edit" data-rid="${r.id}">✎</button>
+      <dl>
+        ${r.brand ? `<dt>Marke</dt><dd>${esc(r.brand)}</dd>` : ''}
+        ${r.formula ? `<dt>Rezeptur</dt><dd>${esc(r.formula)}</dd>` : ''}
+        ${r.oxide ? `<dt>Oxyd</dt><dd>${esc(r.oxide)}</dd>` : ''}
+        ${r.time ? `<dt>Einwirkzeit</dt><dd>${esc(r.time)}</dd>` : ''}
+        ${r.note ? `<dt>Notiz</dt><dd>${esc(r.note)}</dd>` : ''}
+      </dl>
+    </div>`).join('') : '<p class="note">Noch keine Farbrezeptur hinterlegt.</p>';
+
+  v.innerHTML = `
+    <div class="kdhead">
+      <button class="iconbtn" id="kBack" aria-label="Zurück">‹</button>
+      <h2 class="serif">${esc(c.name)}</h2>
+    </div>
+    ${c.hints ? `<div class="warnbanner"><b>⚠︎ Hinweise / Unverträglichkeiten</b>${esc(c.hints)}</div>` : ''}
+    <div class="actions">
+      ${c.phone ? `<a class="btn ghost sm" href="tel:${esc(c.phone.replace(/\s/g, ''))}">📞 Anrufen</a>` : ''}
+      ${c.email ? `<a class="btn ghost sm" href="mailto:${esc(c.email)}">✉️ E-Mail</a>` : ''}
+      <button class="btn ghost sm" id="kEdit">✎ Bearbeiten</button>
+      <button class="btn gold sm" id="kBook">＋ Termin</button>
+    </div>
+    <div class="card">
+      <div class="small-caps">Kontakt & Notizen</div>
+      <hr class="goldrule">
+      <p style="font-size:15px;line-height:1.6">
+        ${c.phone ? '📞 ' + esc(c.phone) + '<br>' : ''}
+        ${c.email ? '✉️ ' + esc(c.email) + '<br>' : ''}
+        ${c.notes ? '<span style="white-space:pre-wrap">' + esc(c.notes) + '</span>' : '<span class="note">Keine Notizen.</span>'}
+      </p>
+      ${next ? `<p class="note" style="margin-top:10px">Nächster Termin:
+        <b style="color:var(--emerald)">${fmtDate(next.date)}, ${esc(next.start)} Uhr</b></p>` : ''}
+      <p class="note">Kundin seit ${new Date(c.createdAt).toLocaleDateString('de-DE')}</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center">
+        <div class="small-caps" style="flex:1">Farbrezepturen</div>
+        <button class="btn ghost sm" id="kAddRecipe">＋ Rezeptur</button>
+      </div>
+      <hr class="goldrule">${recipesHTML}
+    </div>
+    <div class="card">
+      <div class="small-caps">Besuchshistorie (${done.length})</div>
+      <hr class="goldrule">${histHTML}
+    </div>
+    <button class="btn wide danger" id="kDel">Kundin & alle zugehörigen Daten löschen (DSGVO)</button>`;
+
+  $('#kBack').onclick = () => { kund.detailId = null; renderKunden(); };
+  $('#kEdit').onclick = () => openCustForm(c);
+  $('#kBook').onclick = () => openApptForm(null, { date: dkey(new Date()), customerId: c.id });
+  $('#kAddRecipe').onclick = () => openRecipeForm(c, null);
+  v.querySelectorAll('.recipe .edit').forEach(b =>
+    b.onclick = () => openRecipeForm(c, (c.recipes || []).find(r => r.id === b.dataset.rid)));
+  v.querySelectorAll('.histrow').forEach(h =>
+    h.onclick = () => openApptForm(S.appointments.find(a => a.id === h.dataset.apid)));
+  $('#kDel').onclick = async () => {
+    if (!await confirmDlg(`„${c.name}" wird mit allen Notizen, Rezepturen und Terminen endgültig gelöscht. Das kann nicht rückgängig gemacht werden.`, 'Endgültig löschen', true)) return;
+    S.customers = S.customers.filter(x => x.id !== id);
+    S.appointments = S.appointments.filter(a => a.customerId !== id);
+    save(); kund.detailId = null; renderKunden(); toast('Kundin gelöscht.');
+  };
+}
+
+function openCustForm(cust) {
+  const isNew = !cust;
+  const c = cust || { id: uid(), name: '', phone: '', email: '', hints: '', notes: '',
+                      recipes: [], createdAt: Date.now(), updatedAt: Date.now() };
+  const sh = openSheet(isNew ? 'Neue Kundin' : 'Kundin bearbeiten', `
+    <label class="f"><span>Name *</span><input id="cName" value="${esc(c.name)}" autocomplete="off"></label>
+    <div class="frow">
+      <label class="f"><span>Telefon</span><input id="cPhone" type="tel" inputmode="tel" value="${esc(c.phone)}"></label>
+      <label class="f"><span>E-Mail</span><input id="cMail" type="email" inputmode="email" value="${esc(c.email)}"></label>
+    </div>
+    <label class="f"><span style="color:var(--red)">⚠︎ Hinweise / Unverträglichkeiten</span>
+      <textarea id="cHints" placeholder="z. B. Allergie gegen PPD, empfindliche Kopfhaut …">${esc(c.hints)}</textarea></label>
+    <label class="f"><span>Notizen</span>
+      <textarea id="cNotes" placeholder="Vorlieben, Stammfrisur, Gesprächsthemen …">${esc(c.notes)}</textarea></label>
+    <button class="btn wide gold" id="cSave">${isNew ? 'Kundin anlegen' : 'Speichern'}</button>`);
+  sh.el.querySelector('#cSave').onclick = () => {
+    const name = sh.el.querySelector('#cName').value.trim();
+    if (!name) { toast('Bitte einen Namen angeben.'); return; }
+    c.name = name;
+    c.phone = sh.el.querySelector('#cPhone').value.trim();
+    c.email = sh.el.querySelector('#cMail').value.trim();
+    c.hints = sh.el.querySelector('#cHints').value.trim();
+    c.notes = sh.el.querySelector('#cNotes').value.trim();
+    c.updatedAt = Date.now();
+    if (isNew) { S.customers.push(c); kund.detailId = c.id; }
+    save(); sh.close(); renderKunden();
+    toast(isNew ? 'Kundenkarte angelegt.' : 'Gespeichert.');
+  };
+}
+
+function openRecipeForm(cust, recipe) {
+  const isNew = !recipe;
+  const r = recipe || { id: uid(), date: dkey(new Date()), brand: '', formula: '', oxide: '', time: '', note: '' };
+  const sh = openSheet(isNew ? 'Neue Farbrezeptur' : 'Rezeptur bearbeiten', `
+    <label class="f"><span>Datum</span><input type="date" id="rDate" value="${esc(r.date)}"></label>
+    <label class="f"><span>Marke / Serie</span><input id="rBrand" placeholder="z. B. Wella Koleston" value="${esc(r.brand)}"></label>
+    <label class="f"><span>Nuancen & Mischverhältnis</span>
+      <textarea id="rFormula" placeholder="z. B. 7/1 + 8/81 (1:1), 60 g">${esc(r.formula)}</textarea></label>
+    <div class="frow">
+      <label class="f"><span>Oxyd / Vol.</span><input id="rOxide" placeholder="z. B. 6 %" value="${esc(r.oxide)}"></label>
+      <label class="f"><span>Einwirkzeit</span><input id="rTime" placeholder="z. B. 35 Min." value="${esc(r.time)}"></label>
+    </div>
+    <label class="f"><span>Notiz / Ergebnis</span><textarea id="rNote">${esc(r.note)}</textarea></label>
+    <button class="btn wide gold" id="rSave">${isNew ? 'Rezeptur speichern' : 'Speichern'}</button>
+    ${isNew ? '' : '<button class="btn wide danger" id="rDel" style="margin-top:10px">Rezeptur löschen</button>'}`);
+  sh.el.querySelector('#rSave').onclick = () => {
+    r.date = sh.el.querySelector('#rDate').value;
+    r.brand = sh.el.querySelector('#rBrand').value.trim();
+    r.formula = sh.el.querySelector('#rFormula').value.trim();
+    r.oxide = sh.el.querySelector('#rOxide').value.trim();
+    r.time = sh.el.querySelector('#rTime').value.trim();
+    r.note = sh.el.querySelector('#rNote').value.trim();
+    if (!cust.recipes) cust.recipes = [];
+    if (isNew) cust.recipes.push(r);
+    cust.updatedAt = Date.now();
+    save(); sh.close(); renderKunden(); toast('Rezeptur gespeichert.');
+  };
+  const del = sh.el.querySelector('#rDel');
+  if (del) del.onclick = async () => {
+    if (!await confirmDlg('Diese Rezeptur löschen?', 'Löschen', true)) return;
+    cust.recipes = cust.recipes.filter(x => x.id !== r.id);
+    cust.updatedAt = Date.now();
+    save(); sh.close(); renderKunden(); toast('Rezeptur gelöscht.');
+  };
+}
+
+/* =====================================================================
+   Mehr: Einstellungen · Dienstleistungen · Backup · Sicherheit
+   ===================================================================== */
+const SVC_COLORS = ['#C7A86A', '#1F4A3D', '#A8402F', '#5B7A99', '#8A6FA8', '#B8860B', '#4E7A5A', '#946B4A'];
+
+function renderMehr() {
+  const v = $('#viewMehr');
+  const st = S.settings;
+  const svcRows = S.services.map(s => `
+    <div class="svcrow">
+      <span class="dot" style="background:${esc(s.color)}"></span>
+      <span class="n">${esc(s.name)}</span>
+      <span class="meta">${s.dur} Min · ${fmtEuro(s.price)}</span>
+      <button class="iconbtn" data-svc="${s.id}" style="width:32px;height:32px;font-size:14px">✎</button>
+    </div>`).join('');
+
+  v.innerHTML = `
+    <div class="card">
+      <h3>Salon & Kalender</h3>
+      <label class="f"><span>Salonname</span><input id="stName" value="${esc(st.salonName)}"></label>
+      <div class="frow">
+        <label class="f"><span>Geöffnet von</span><input type="time" id="stFrom" value="${esc(st.openFrom)}"></label>
+        <label class="f"><span>bis</span><input type="time" id="stTo" value="${esc(st.openTo)}"></label>
+      </div>
+      <div class="frow">
+        <label class="f"><span>Zeitraster</span>
+          <select id="stSlot">
+            <option value="15">15 Minuten</option><option value="30">30 Minuten</option>
+          </select></label>
+        <label class="f"><span>Auto-Sperre</span>
+          <select id="stLock">
+            <option value="1">nach 1 Min.</option><option value="5">nach 5 Min.</option>
+            <option value="10">nach 10 Min.</option><option value="30">nach 30 Min.</option>
+            <option value="0">aus</option>
+          </select></label>
+      </div>
+      <div class="checkline"><input type="checkbox" id="stSun" ${st.showSunday ? 'checked' : ''}>
+        <span>Sonntag im Wochenkalender anzeigen</span></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center">
+        <h3 style="flex:1">Dienstleistungen</h3>
+        <button class="btn ghost sm" id="svcNew">＋ Neu</button>
+      </div>
+      ${svcRows || '<p class="note">Keine Dienstleistungen angelegt.</p>'}
+    </div>
+
+    <div class="card">
+      <h3>Backup & Geräteabgleich</h3>
+      <p class="note" style="margin:0 0 12px">Die Sicherung ist mit deiner PIN <b>verschlüsselt</b>.
+        Übertrage sie per AirDrop oder iCloud Drive auf das andere Gerät und importiere sie dort.</p>
+      <button class="btn wide" id="bakExport">Verschlüsseltes Backup exportieren</button>
+      <button class="btn wide ghost" id="bakImport" style="margin-top:10px">Backup importieren …</button>
+      <input type="file" id="bakFile" accept=".json,application/json" style="display:none">
+      <button class="btn wide ghost" id="bakCsv" style="margin-top:10px">Kundenliste als CSV (unverschlüsselt)</button>
+    </div>
+
+    <div class="card">
+      <h3>Sicherheit</h3>
+      <button class="btn wide ghost" id="pinChange">PIN ändern</button>
+      <button class="btn wide" id="lockNow2" style="margin-top:10px">Jetzt sperren 🔒</button>
+    </div>
+
+    <div class="card">
+      <h3>Datenschutz</h3>
+      <ul class="privacy">
+        <li>Alle Kundendaten liegen <b>ausschließlich auf diesem Gerät</b> — kein Server, keine Cloud, keine Übertragung an Dritte.</li>
+        <li>Die Daten sind mit <b>AES-256 (GCM)</b> verschlüsselt; der Schlüssel wird aus deiner PIN abgeleitet und nie gespeichert.</li>
+        <li><b>PIN vergessen = Daten unwiederbringlich verloren.</b> Exportiere deshalb regelmäßig ein Backup.</li>
+        <li>Kundinnen haben ein Recht auf Löschung — der Lösch-Knopf auf der Kundenkarte entfernt alle zugehörigen Daten.</li>
+        <li>Aktiviere zusätzlich die Gerätesperre (Code/Face ID) von iPad & iPhone.</li>
+      </ul>
+    </div>
+    <p class="note" style="text-align:center">VIDA Salon · lokal & verschlüsselt · v1</p>`;
+
+  // Einstellungen direkt speichern
+  $('#stSlot').value = String(st.slot);
+  $('#stLock').value = String(st.autoLockMin);
+  const upd = () => {
+    st.salonName = $('#stName').value.trim() || 'VIDA Hair Lounge';
+    st.openFrom = $('#stFrom').value || '08:00';
+    st.openTo = $('#stTo').value || '19:00';
+    if (hm2min(st.openTo) - hm2min(st.openFrom) < 120) st.openTo = min2hm(hm2min(st.openFrom) + 120);
+    st.slot = parseInt($('#stSlot').value, 10);
+    st.autoLockMin = parseInt($('#stLock').value, 10);
+    st.showSunday = $('#stSun').checked;
+    save(); toast('Einstellungen gespeichert.');
+  };
+  ['#stName', '#stFrom', '#stTo', '#stSlot', '#stLock', '#stSun'].forEach(sel =>
+    $(sel).addEventListener('change', upd));
+
+  $('#svcNew').onclick = () => openSvcForm(null);
+  v.querySelectorAll('[data-svc]').forEach(b =>
+    b.onclick = () => openSvcForm(svcById(b.dataset.svc)));
+
+  $('#bakExport').onclick = exportBackup;
+  $('#bakImport').onclick = () => $('#bakFile').click();
+  $('#bakFile').addEventListener('change', e => {
+    if (e.target.files[0]) importBackup(e.target.files[0]);
+    e.target.value = '';
+  });
+  $('#bakCsv').onclick = exportCsv;
+  $('#pinChange').onclick = openPinChange;
+  $('#lockNow2').onclick = lockNow;
+}
+
+function openSvcForm(svc) {
+  const isNew = !svc;
+  const s = svc || { id: uid(), name: '', dur: 60, price: 40, color: SVC_COLORS[0],
+                     createdAt: Date.now(), updatedAt: Date.now() };
+  let color = s.color;
+  const sh = openSheet(isNew ? 'Neue Dienstleistung' : 'Dienstleistung bearbeiten', `
+    <label class="f"><span>Bezeichnung *</span><input id="svName" value="${esc(s.name)}"></label>
+    <div class="frow">
+      <label class="f"><span>Dauer (Min.)</span><input type="number" id="svDur" min="5" step="5" value="${s.dur}"></label>
+      <label class="f"><span>Preis (€)</span><input type="number" id="svPrice" min="0" step="0.5" inputmode="decimal" value="${s.price}"></label>
+    </div>
+    <label class="f"><span>Farbe im Kalender</span>
+      <div class="swatches">${SVC_COLORS.map(c =>
+        `<button data-c="${c}" class="${c === color ? 'on' : ''}" style="background:${c}"></button>`).join('')}</div>
+    </label>
+    <button class="btn wide gold" id="svSave">${isNew ? 'Anlegen' : 'Speichern'}</button>
+    ${isNew ? '' : '<button class="btn wide danger" id="svDel" style="margin-top:10px">Dienstleistung löschen</button>'}`);
+  sh.el.querySelectorAll('.swatches button').forEach(b => b.onclick = () => {
+    color = b.dataset.c;
+    sh.el.querySelectorAll('.swatches button').forEach(x => x.classList.toggle('on', x === b));
+  });
+  sh.el.querySelector('#svSave').onclick = () => {
+    const name = sh.el.querySelector('#svName').value.trim();
+    if (!name) { toast('Bitte eine Bezeichnung angeben.'); return; }
+    s.name = name;
+    s.dur = Math.max(5, parseInt(sh.el.querySelector('#svDur').value, 10) || 30);
+    s.price = parseFloat(sh.el.querySelector('#svPrice').value) || 0;
+    s.color = color; s.updatedAt = Date.now();
+    if (isNew) S.services.push(s);
+    save(); sh.close(); renderMehr(); toast('Gespeichert.');
+  };
+  const del = sh.el.querySelector('#svDel');
+  if (del) del.onclick = async () => {
+    if (!await confirmDlg('Dienstleistung löschen? Bestehende Termine bleiben erhalten.', 'Löschen', true)) return;
+    S.services = S.services.filter(x => x.id !== s.id);
+    save(); sh.close(); renderMehr(); toast('Gelöscht.');
+  };
+}
+
+/* ---------- Backup: Export / Import / CSV ---------- */
+async function exportBackup() {
+  try {
+    const pack = await encJSON(S, KEY);
+    const out = { format: 'vida-salon-backup', version: 1, iter: META.iter, salt: META.salt,
+                  iv: pack.iv, ct: pack.ct, exportedAt: new Date().toISOString() };
+    const name = 'vida-backup-' + dkey(new Date()) + '.json';
+    const blob = new Blob([JSON.stringify(out)], { type: 'application/json' });
+    const file = new File([blob], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'VIDA Backup' });
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+    toast('Backup exportiert (verschlüsselt).');
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    toast('Export fehlgeschlagen.');
+  }
+}
+
+function importBackup(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    let pack;
+    try {
+      pack = JSON.parse(rd.result);
+      if (pack.format !== 'vida-salon-backup') throw 0;
+    } catch { toast('Keine gültige VIDA-Backup-Datei.'); return; }
+
+    const sh = openSheet('Backup importieren', `
+      <p style="font-size:14px;margin-bottom:12px">Sicherung vom
+        <b>${esc((pack.exportedAt || '').slice(0, 10))}</b>. Gib die PIN ein, mit der das Backup
+        erstellt wurde (PIN des anderen Geräts).</p>
+      <label class="f"><span>PIN des Backups</span>
+        <input type="password" inputmode="numeric" id="impPin" autocomplete="off"></label>
+      <label class="f"><span>Modus</span>
+        <select id="impMode">
+          <option value="merge">Zusammenführen (neuere Einträge gewinnen)</option>
+          <option value="replace">Alles ersetzen (lokale Daten überschreiben)</option>
+        </select></label>
+      <button class="btn wide gold" id="impGo">Importieren</button>`);
+    sh.el.querySelector('#impGo').onclick = async () => {
+      const pin = sh.el.querySelector('#impPin').value;
+      const mode = sh.el.querySelector('#impMode').value;
+      try {
+        const key = await deriveKey(pin, unb64(pack.salt), pack.iter || ITER);
+        const inc = await decJSON({ iv: pack.iv, ct: pack.ct }, key);
+        if (mode === 'replace') {
+          S = inc;
+        } else {
+          mergeData(S, inc);
+        }
+        save(); sh.close();
+        switchTab(curTab);
+        toast(mode === 'replace' ? 'Backup eingespielt.' : 'Backup zusammengeführt.');
+      } catch {
+        toast('PIN falsch oder Datei beschädigt.');
+      }
+    };
+  };
+  rd.readAsText(file);
+}
+
+function mergeData(cur, inc) {
+  ['customers', 'appointments', 'services'].forEach(col => {
+    const map = new Map(cur[col].map(x => [x.id, x]));
+    (inc[col] || []).forEach(x => {
+      const have = map.get(x.id);
+      if (!have || (x.updatedAt || 0) > (have.updatedAt || 0)) map.set(x.id, x);
+    });
+    cur[col] = [...map.values()];
+  });
+}
+
+function exportCsv() {
+  confirmDlg('Die CSV-Datei ist UNVERSCHLÜSSELT und enthält personenbezogene Daten. Nur exportieren, wenn du sie sicher weiterverarbeitest (z. B. DSGVO-Auskunft).', 'CSV exportieren')
+    .then(ok => {
+      if (!ok) return;
+      const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+      const rows = [['Name', 'Telefon', 'E-Mail', 'Hinweise', 'Notizen', 'Kundin seit'].map(q).join(';')];
+      S.customers.slice().sort((a, b) => a.name.localeCompare(b.name, 'de')).forEach(c =>
+        rows.push([c.name, c.phone, c.email, c.hints, c.notes,
+          new Date(c.createdAt).toLocaleDateString('de-DE')].map(q).join(';')));
+      const blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'vida-kunden-' + dkey(new Date()) + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast('CSV exportiert.');
+    });
+}
+
+/* ---------- PIN ändern ---------- */
+function openPinChange() {
+  const sh = openSheet('PIN ändern', `
+    <label class="f"><span>Aktuelle PIN</span>
+      <input type="password" inputmode="numeric" id="pcOld" autocomplete="off"></label>
+    <label class="f"><span>Neue PIN (mind. 4 Ziffern)</span>
+      <input type="password" inputmode="numeric" id="pcNew" autocomplete="off"></label>
+    <label class="f"><span>Neue PIN wiederholen</span>
+      <input type="password" inputmode="numeric" id="pcNew2" autocomplete="off"></label>
+    <button class="btn wide gold" id="pcGo">PIN ändern</button>
+    <p class="note">Die Daten werden mit der neuen PIN neu verschlüsselt. Alte Backups behalten die alte PIN!</p>`);
+  sh.el.querySelector('#pcGo').onclick = async () => {
+    const oldPin = sh.el.querySelector('#pcOld').value;
+    const n1 = sh.el.querySelector('#pcNew').value, n2 = sh.el.querySelector('#pcNew2').value;
+    if (n1.length < 4) { toast('Neue PIN: mindestens 4 Ziffern.'); return; }
+    if (n1 !== n2) { toast('Neue PINs stimmen nicht überein.'); return; }
+    try {
+      const oldKey = await deriveKey(oldPin, unb64(META.salt), META.iter);
+      await decJSON(META.check, oldKey);
+    } catch { toast('Aktuelle PIN ist falsch.'); return; }
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await deriveKey(n1, salt, ITER);
+    META = { salt: b64(salt), iter: ITER, check: await encJSON({ v: 'vida-check' }, key) };
+    KEY = key;
+    await idb.set('meta', META);
+    await idb.set('data', await encJSON(S, KEY));
+    sh.close(); toast('PIN geändert.');
+  };
+}
+
+/* =====================================================================
+   Start
+   ===================================================================== */
+(async function init() {
+  renderPad(); renderDots();
+  try {
+    await idb.open();
+    META = await idb.get('meta');
+  } catch (e) {
+    lockMsg('Speicher nicht verfügbar: ' + e, true);
+    return;
+  }
+  if (!META) {
+    lockUI.mode = 'setup1';
+    lockMsg('Willkommen! Wähle eine PIN (mind. 4 Ziffern).');
+  } else {
+    lockUI.mode = 'unlock';
+    lockMsg('PIN eingeben');
+  }
+  if ('serviceWorker' in navigator &&
+      (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
