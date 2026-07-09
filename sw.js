@@ -1,7 +1,7 @@
 /* Service Worker – macht VIDA Salon offline verfügbar.
    Wirkt nur, wenn die Seite über https:// oder http://localhost ausgeliefert wird
    (Secure-Context-Pflicht). Beim Öffnen als lokale Datei greift er nicht, schadet aber nicht. */
-const CACHE = 'vida-salon-v1';
+const CACHE = 'vida-salon-v2';
 const ASSETS = [
   './VIDA-Salon.html',
   './manifest.webmanifest',
