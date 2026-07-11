@@ -382,6 +382,10 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--emerald)}
    Keinerlei externe Verbindungen.
    ===================================================================== */
 
+/* Bei jedem Update zusammen mit CACHE in sw.js hochzählen —
+   sichtbar unten im "Mehr"-Tab, so lässt sich prüfen, ob ein Update angekommen ist. */
+const APP_VERSION = 'v2 · 11.07.2026';
+
 /* ---------- IndexedDB (kleiner Promise-Wrapper) ---------- */
 const idb = {
   db: null,
@@ -1433,12 +1437,15 @@ function renderMehr() {
     <div class="card">
       <h3>Geräte-Abgleich & Backup</h3>
       <p class="note" style="margin:0 0 12px">Beide Geräte nebeneinander legen: hier
-        <b>„Übertragen"</b> tippen und per <b>AirDrop</b> das andere Gerät wählen. Dort die Datei annehmen,
+        <b>„Übertragen"</b> tippen und per <b>AirDrop</b> das andere Gerät wählen. Dort
+        <b>„In Dateien sichern"</b> antippen (die Datei öffnet sich nicht), dann
         VIDA öffnen und <b>„Empfangen"</b> tippen. Gleiche PIN auf beiden Geräten = keine PIN-Eingabe nötig.
         Die Datei ist immer verschlüsselt — sie eignet sich auch als Backup (z. B. in iCloud Drive ablegen).</p>
       <button class="btn wide" id="bakExport">📤 Daten übertragen (AirDrop / Datei)</button>
       <button class="btn wide" id="bakImport" style="margin-top:10px">📥 Daten empfangen …</button>
-      <input type="file" id="bakFile" accept=".json,application/json" style="display:none">
+      <!-- kein accept-Filter: .vida hat keinen registrierten Dateityp und wäre
+           im iOS-Dateiwähler sonst ausgegraut; alte .json-Backups bleiben wählbar -->
+      <input type="file" id="bakFile" style="display:none">
       <button class="btn wide ghost" id="bakCsv" style="margin-top:10px">Kundenliste als CSV (unverschlüsselt)</button>
     </div>
 
@@ -1458,7 +1465,7 @@ function renderMehr() {
         <li>Aktiviere zusätzlich die Gerätesperre (Code/Face ID) von iPad & iPhone.</li>
       </ul>
     </div>
-    <p class="note" style="text-align:center">VIDA Salon · lokal & verschlüsselt · v1</p>`;
+    <p class="note" style="text-align:center">VIDA Salon · lokal & verschlüsselt · ${APP_VERSION}</p>`;
 
   // Einstellungen direkt speichern
   $('#stSlot').value = String(st.slot);
@@ -1588,7 +1595,9 @@ async function exportBackup() {
     const pack = await encJSON(S, KEY);
     const out = { format: 'vida-salon-backup', version: 1, iter: META.iter, salt: META.salt,
                   iv: pack.iv, ct: pack.ct, exportedAt: new Date().toISOString() };
-    const name = 'vida-backup-' + dkey(new Date()) + '.json';
+    // Eigene Endung .vida: iOS kennt sie nicht und bietet beim AirDrop-Empfang
+    // nur "In Dateien sichern" an, statt die Datei in einer Vorschau zu öffnen.
+    const name = 'vida-backup-' + dkey(new Date()) + '.vida';
     const blob = new Blob([JSON.stringify(out)], { type: 'application/json' });
     const file = new File([blob], name, { type: 'application/json' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {

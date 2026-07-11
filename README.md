@@ -33,10 +33,15 @@ lokal hosten.
 Die Daten liegen nur lokal — es gibt keine automatische Synchronisation
 (bewusste Datenschutz-Entscheidung).
 
-1. Auf dem Hauptgerät (z. B. iPad): **Mehr → Verschlüsseltes Backup exportieren**
+1. Auf dem Hauptgerät (z. B. iPad): **Mehr → Daten übertragen**
 2. Datei per **AirDrop** (oder iCloud Drive) ans andere Gerät senden
-3. Dort: **Mehr → Backup importieren** → PIN des Backups eingeben →
+3. Dort **„In Dateien sichern"** antippen — die Datei hat die Endung `.vida`,
+   iOS öffnet sie deshalb **nicht** in einer Vorschau
+4. VIDA öffnen: **Mehr → Daten empfangen** → Datei wählen →
    **Zusammenführen** (neuere Einträge gewinnen) oder **Ersetzen**
+   (gleiche PIN auf beiden Geräten = keine PIN-Eingabe nötig)
+
+Ältere Backups mit Endung `.json` lassen sich weiterhin importieren.
 
 Empfehlung: das **iPad als führendes Gerät** im Salon nutzen und das iPhone
 z. B. wöchentlich per Backup aktualisieren.
@@ -58,6 +63,29 @@ nicht genutzt wird. Als **installierte Home-Bildschirm-App** sind die Daten
 davon in der Praxis nicht betroffen; die App fordert zusätzlich dauerhafte
 Speicherung an (`navigator.storage.persist`). Trotzdem gilt: **regelmäßig
 Backup exportieren.**
+
+## Updates: neue Version, alte Daten behalten
+
+Die Daten (Kundinnen, Termine, Karteikarten, Dienstleistungen, Einstellungen,
+PIN) liegen **nicht in der HTML-Datei**, sondern in der IndexedDB des Browsers —
+gebunden an die **Domain**, unter der die App läuft.
+
+- **Normalfall:** Die neue `VIDA-Salon.html` einfach unter **derselben Adresse**
+  auf den Webspace legen (Datei überschreiben) und in `sw.js` die Zeile
+  `const CACHE = 'vida-salon-vX'` **um eins hochzählen** (ebenso `APP_VERSION`
+  in `VIDA-Salon.html` — die Nummer steht unten im „Mehr"-Tab, so lässt sich
+  am Gerät prüfen, ob das Update angekommen ist). Die installierte App
+  lädt beim nächsten Öffnen (ggf. einmal schließen und neu öffnen) die neue
+  Version — **alle Daten bleiben automatisch erhalten**, kein Export nötig.
+- **Homescreen-Icon niemals löschen:** iOS entfernt beim Löschen einer
+  Homescreen-App auch **alle lokalen Daten** (komplette Kundenkartei!).
+  Für ein Update ist das Löschen nie nötig.
+- **Sicherheitsnetz:** Vor jedem Update trotzdem einmal **Daten übertragen**
+  (= verschlüsseltes Backup) ausführen und die `.vida`-Datei aufheben.
+- **Nur bei Domain-Wechsel** (z. B. Umzug auf eine andere Adresse) sieht die
+  neue Installation die alten Daten nicht — dann das Backup dort über
+  **Daten empfangen** importieren. Neue Versionen müssen das Backup-Format
+  `vida-salon-backup` (Version 1) weiterhin lesen können.
 
 ## Entwicklung
 
