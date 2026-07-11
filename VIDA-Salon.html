@@ -384,7 +384,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--emerald)}
 
 /* Bei jedem Update zusammen mit CACHE in sw.js hochzählen —
    sichtbar unten im "Mehr"-Tab, so lässt sich prüfen, ob ein Update angekommen ist. */
-const APP_VERSION = 'v3 · 11.07.2026';
+const APP_VERSION = 'v4 · 11.07.2026';
 
 /* ---------- IndexedDB (kleiner Promise-Wrapper) ---------- */
 const idb = {
@@ -1598,7 +1598,11 @@ async function exportBackup() {
                   iv: pack.iv, ct: pack.ct, exportedAt: new Date().toISOString() };
     // Eigene Endung .vida: iOS kennt sie nicht und bietet beim AirDrop-Empfang
     // nur "In Dateien sichern" an, statt die Datei in einer Vorschau zu öffnen.
-    const name = 'vida-backup-' + dkey(new Date()) + '.vida';
+    // Uhrzeit im Namen: mehrere Exporte am selben Tag bleiben unterscheidbar,
+    // sonst importiert man leicht eine ältere gleichnamige Datei.
+    const now = new Date();
+    const hm = String(now.getHours()).padStart(2, '0') + '-' + String(now.getMinutes()).padStart(2, '0');
+    const name = 'vida-backup-' + dkey(now) + '_' + hm + '.vida';
     const blob = new Blob([JSON.stringify(out)], { type: 'application/json' });
     const file = new File([blob], name, { type: 'application/json' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1614,6 +1618,14 @@ async function exportBackup() {
     if (e && e.name === 'AbortError') return;
     toast('Export fehlgeschlagen.');
   }
+}
+
+/* Exportzeitpunkt mit Uhrzeit anzeigen — nur mit dem Datum erkennt man nicht,
+   ob man eine ältere von mehreren Dateien desselben Tages erwischt hat. */
+function expStamp(iso) {
+  const d = new Date(iso || '');
+  return isNaN(d) ? 'unbekannt' :
+    d.toLocaleDateString('de-DE') + ', ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr';
 }
 
 function importBackup(file) {
@@ -1637,7 +1649,7 @@ function importBackup(file) {
 
     const sh = openSheet('Daten empfangen', `
       <p style="font-size:14px;margin-bottom:12px">Datei vom
-        <b>${esc((pack.exportedAt || '').slice(0, 10))}</b>. Das sendende Gerät hat eine andere PIN —
+        <b>${expStamp(pack.exportedAt)}</b>. Das sendende Gerät hat eine andere PIN —
         bitte dessen PIN eingeben.</p>
       <label class="f"><span>PIN des sendenden Geräts</span>
         <input type="password" inputmode="numeric" id="impPin" autocomplete="off"></label>
@@ -1662,15 +1674,18 @@ function chooseImportMode(inc, pack) {
   const sh = openSheet('Daten empfangen', `
     <p style="font-size:15px;line-height:1.5;margin-bottom:14px">✅ Datei entschlüsselt:
       <b>${nK} Kundinnen</b>, <b>${nT} Termine</b>
-      (Stand ${esc((pack.exportedAt || '').slice(0, 10))}).<br>Wie sollen die Daten übernommen werden?</p>
+      (Stand <b>${expStamp(pack.exportedAt)}</b>).<br>Wie sollen die Daten übernommen werden?</p>
     <button class="btn wide gold" id="impMerge">Zusammenführen (empfohlen)</button>
     <p class="note" style="margin:4px 0 12px;text-align:center">Neuere Einträge gewinnen, nichts geht verloren.</p>
     <button class="btn wide danger" id="impReplace">Alles ersetzen</button>
     <p class="note" style="margin:4px 0 0;text-align:center">Überschreibt sämtliche Daten auf diesem Gerät!</p>`);
   sh.el.querySelector('#impMerge').onclick = () => {
-    mergeData(S, inc);
+    const st = mergeData(S, inc);
     save(); sh.close(); switchTab(curTab);
-    toast('Daten zusammengeführt.');
+    const total = st.customers + st.appointments + st.services;
+    toast(total === 0
+      ? 'Nichts übernommen — alles war schon vorhanden (evtl. ältere Datei erwischt?).'
+      : `Übernommen: ${st.customers} Kundinnen, ${st.appointments} Termine, ${st.services} Dienstleistungen.`);
   };
   sh.el.querySelector('#impReplace').onclick = async () => {
     sh.close();
@@ -1682,14 +1697,18 @@ function chooseImportMode(inc, pack) {
 }
 
 function mergeData(cur, inc) {
+  const st = {};
   ['customers', 'appointments', 'services'].forEach(col => {
     const map = new Map(cur[col].map(x => [x.id, x]));
+    let n = 0;
     (inc[col] || []).forEach(x => {
       const have = map.get(x.id);
-      if (!have || (x.updatedAt || 0) > (have.updatedAt || 0)) map.set(x.id, x);
+      if (!have || (x.updatedAt || 0) > (have.updatedAt || 0)) { map.set(x.id, x); n++; }
     });
     cur[col] = [...map.values()];
+    st[col] = n;
   });
+  return st;
 }
 
 function exportCsv() {
