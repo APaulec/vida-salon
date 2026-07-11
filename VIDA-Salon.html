@@ -384,7 +384,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--emerald)}
 
 /* Bei jedem Update zusammen mit CACHE in sw.js hochzählen —
    sichtbar unten im "Mehr"-Tab, so lässt sich prüfen, ob ein Update angekommen ist. */
-const APP_VERSION = 'v2 · 11.07.2026';
+const APP_VERSION = 'v3 · 11.07.2026';
 
 /* ---------- IndexedDB (kleiner Promise-Wrapper) ---------- */
 const idb = {
@@ -1443,9 +1443,10 @@ function renderMehr() {
         Die Datei ist immer verschlüsselt — sie eignet sich auch als Backup (z. B. in iCloud Drive ablegen).</p>
       <button class="btn wide" id="bakExport">📤 Daten übertragen (AirDrop / Datei)</button>
       <button class="btn wide" id="bakImport" style="margin-top:10px">📥 Daten empfangen …</button>
-      <!-- kein accept-Filter: .vida hat keinen registrierten Dateityp und wäre
-           im iOS-Dateiwähler sonst ausgegraut; alte .json-Backups bleiben wählbar -->
-      <input type="file" id="bakFile" style="display:none">
+      <!-- accept ohne Bild-Typen → iOS öffnet direkt den Dateiwähler (kein
+           "Fotomediathek"-Auswahldialog); application/octet-stream deckt die
+           unregistrierte .vida-Endung ab, .json bleibt für alte Backups wählbar -->
+      <input type="file" id="bakFile" accept=".vida,.json,application/json,application/octet-stream" style="display:none">
       <button class="btn wide ghost" id="bakCsv" style="margin-top:10px">Kundenliste als CSV (unverschlüsselt)</button>
     </div>
 
