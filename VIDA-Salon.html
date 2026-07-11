@@ -345,7 +345,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--emerald)}
   <div id="lockMsg"></div>
   <div class="pindots" id="pinDots"></div>
   <div class="pinpad" id="pinPad"></div>
-  <div class="foot">Kundendaten · verschlüsselt · nur auf diesem Gerät</div>
+  <div class="foot">Kundendaten · verschlüsselt · nur auf diesem Gerät<br><span id="lockVer"></span></div>
 </div>
 
 <!-- ============ App ============ -->
@@ -384,7 +384,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--emerald)}
 
 /* Bei jedem Update zusammen mit CACHE in sw.js hochzählen —
    sichtbar unten im "Mehr"-Tab, so lässt sich prüfen, ob ein Update angekommen ist. */
-const APP_VERSION = 'v4 · 11.07.2026';
+const APP_VERSION = 'v5 · 11.07.2026';
 
 /* ---------- IndexedDB (kleiner Promise-Wrapper) ---------- */
 const idb = {
@@ -1778,9 +1778,28 @@ function openPinChange() {
     lockUI.mode = 'unlock';
     lockMsg('PIN eingeben');
   }
+  $('#lockVer').textContent = APP_VERSION;
   if ('serviceWorker' in navigator &&
       (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    // updateViaCache 'none': sw.js nie aus dem HTTP-Cache prüfen, sonst hängen
+    // Geräte u. U. lange auf einer alten Version fest.
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+      reg.update().catch(() => {});
+      // Auch beim Zurückholen aus dem Hintergrund nach Updates suchen —
+      // eine installierte iOS-App navigiert dabei nicht neu.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+      // Neuer SW hat übernommen: am Sperrbildschirm sofort neu laden (Update
+      // direkt sichtbar), nach dem Entsperren nur ankündigen — nichts unterbrechen.
+      const hadController = !!navigator.serviceWorker.controller;
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController || reloaded) return;
+        if (!KEY) { reloaded = true; location.reload(); }
+        else toast('Update geladen — aktiv beim nächsten Start.');
+      });
+    }).catch(() => {});
   }
 })();
 </script>
